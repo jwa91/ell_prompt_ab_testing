@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ell_boilerplate"
+version = "0.0.1"
+authors = [{name = "Jan Willem Altink", email = "janwillem@janwillemaltink.eu"}]
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+dependencies = [
+    "python-dotenv",
+    "ell-ai",
+    "anthropic",
+    "pydantic",
+    "openai",
+]
+
+[project.scripts]
+ell_boilerplate = "ell_boilerplate.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
