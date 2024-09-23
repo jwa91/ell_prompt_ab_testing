@@ -17,7 +17,7 @@ class EllClient:
 
         self._load_environment()
         self._setup_clients()
-        ell.init(verbose=True)
+        ell.init(verbose=True, store="./logdir", autocommit=True)
         self.initialized = True
         print("ell is succesvol geconfigureerd met OpenAI en Anthropic clients.")
 
@@ -34,8 +34,12 @@ class EllClient:
     def _setup_clients(self):
         openai_client = openai.Client(api_key=self.openai_api_key)
         ell.config.register_model("gpt-4o", openai_client)
+        ell.config.register_model("gpt-4-turbo", openai_client)
+        ell.config.register_model("gpt-4o-mini", openai_client)
+
         anthropic_client = anthropic.Client(api_key=self.anthropic_api_key)
         ell.config.register_model("claude-3-haiku-20240307", anthropic_client)
+        ell.config.register_model("claude-3-5-sonnet-20240620", anthropic_client)
 
     @classmethod
     def get_instance(cls):
