@@ -1,17 +1,16 @@
 # src/ell_boilerplate/main.py
 import ell
+from ell_boilerplate.config import EllClient
 
-from ell_boilerplate.config import initialize_ell
+@ell.simple(model="claude-3-haiku-20240307", max_tokens=1024)
+def hello(name: str):
+    """You are a helpful assistant."""  # System prompt
+    return f"Say hello to {name}!"  # User prompt
 
 def main():
-    # Initialiseer ell met de juiste configuratie
-    initialize_ell()
+    EllClient.get_instance().initialize()
 
-    @ell.simple(model="claude-3-haiku-20240307", max_tokens=1024)
-    def hello(name: str):
-        """You are a helpful assistant."""  # System prompt
-        return f"Say hello to {name}!"  # User prompt
-
+    # Gebruik ell functies
     greeting = hello("Sam Altman")
     print(greeting)
 
