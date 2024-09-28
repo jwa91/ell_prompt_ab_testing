@@ -3,3 +3,7 @@ __pycache__
 *.egg-info
 file2md
 logdir
+zzdocs
+output
+.envs-ell_boilerplate.zsh
+.DS_Store

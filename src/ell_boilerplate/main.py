@@ -1,61 +1,82 @@
-# src/ell_boilerplate/main.py
-from dotenv import load_dotenv
-import os
 import ell
-import openai
-import anthropic
+import json
+from pydantic import BaseModel, Field
 from typing import List
+from ell_boilerplate.utils.feeds import feeds_with_target_audience
+from ell_boilerplate.utils.get_rss_feeds import fetch_filtered_feed_data, RSSItem
 
-def initialize_ell():
-    load_dotenv()
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+ell.init(store='./logdir', autocommit=True, verbose=True)
 
-    if not openai_api_key:
-        raise EnvironmentError("OPENAI_API_KEY niet ingesteld")
-    if not anthropic_api_key:
-        raise EnvironmentError("ANTHROPIC_API_KEY niet ingesteld")
+class NewsSource(BaseModel):
+    name: str = Field(description="Naam van de nieuwsbron")
+    weight: int = Field(description="Weging op een schaal van 1 tot 10 voor deze nieuwsbron")
+    reason: str = Field(description="Reden waarom deze bron wordt aanbevolen")
 
-    openai_client = openai.Client(api_key=openai_api_key)
-    anthropic_client = anthropic.Client(api_key=anthropic_api_key)
+class PersonalizedNewsfeed(BaseModel):
+    sources: List[NewsSource] = Field(description="De geselecteerde nieuwsbronnen met hun weging en reden")
 
-    ell.init(verbose=True, store="./logdir", autocommit=True)
-    ell.config.register_model("gpt-4o", openai_client)
-    ell.config.register_model("gpt-4-turbo", openai_client)
-    ell.config.register_model("gpt-4o-mini", openai_client)
-    ell.config.register_model("claude-3-haiku-20240307", anthropic_client)
-    ell.config.register_model("claude-3-5-sonnet-20240620", anthropic_client)
+class RankedNewsItem(BaseModel):
+    id:str = Field(description="id van het nieuwsitem")
+    title:str = Field(description="title van het nieuwsitem")
+    position: int = Field(description="waarde om nieuwsitem te prioriteren. 1 is het meest aanbevolen item")
+    reason: str = Field(description="Reden waarom dit item wordt aanbevolen")
 
-    print("ell is succesvol geconfigureerd met OpenAI en Anthropic clients.")
+class RankedNewsItems(BaseModel):
+    items: List[RankedNewsItem] = Field(description="De geselecteerde nieuwsitems met hun title, positie en reden")
 
-initialize_ell()
 
-@ell.simple(model="gpt-4o-mini", temperature=1.0)
-def generate_story_ideas(about : str):
-    """You are an expert story ideator. Only answer in a single sentence."""
-    return f"Generate a story idea about {about}."
+@ell.complex(model="gpt-4o-2024-08-06", response_format=PersonalizedNewsfeed)
+def generate_personalized_newsfeed(description: str) -> PersonalizedNewsfeed:
+    """
+    Je bent een persoonlijke nieuwsbrief redacteur. Op basis van een persoonlijke omschrijving geef je tussen de 4 en 8
+    nieuwsbronnen terug, elk met een weging op een schaal van 1 tot 10 die samen altijd optellen tot exact 10. Geef ook de reden voor het opnemen van elke bron.
+    Kies altijd uit de meegegeven nieuwsbronnen.
+    """
+    available_feeds = ", ".join([f"{feed['name']} (Doelgroep: {feed['audience']})" for feed in feeds_with_target_audience])
+    return f"""
+    Gebaseerd op de volgende omschrijving van de ontvanger: "{description}", kies je minimaal 4 en maximaal 8 nieuwsbronnen
+    die het beste passen bij hun nieuwsbehoefte. Geef aan waarom je deze bronnen kiest en wijs elke bron een weging toe
+    in procenten. De totale weging moet precies 10 zijn. Beschikbare nieuwsbronnen en hun doelgroepen: {available_feeds}
+    """
 
-@ell.simple(model="gpt-4o-mini", temperature=1.0)
-def write_a_draft_of_a_story(idea : str):
-    """You are an adept story writer. The story should only be 3 paragraphs."""
-    return f"Write a story about {idea}."
+@ell.complex(model="gpt-4o-2024-08-06", response_format=RankedNewsItems)
+def rank_news_items(description: str, articles: List[RSSItem], weight: int) -> RankedNewsItems:
+    """
+    Je bent een redacteur die artikelen rangschikt voor een nieuwsbrief. Op basis van de beschrijving van de ontvanger
+    en de aangeleverde artikelen, rangschik je de beste artikelen die aansluiten bij de nieuwsbehoefte. Het aantal artikelen
+    is gelijk aan de weging van de nieuwsbron vermenigvuldigd met 1,5, afgerond naar het dichtstbijzijnde hele getal.
+    """
+    num_items = round(weight * 1.5)
+    titles_with_summaries = "\n".join([f"ID: {article.id}, Title: {article.title_detail.value}, Summary: {article.summary_detail.value[:150]}" for article in articles])
+    return f"""
+    Gegeven de volgende beschrijving van de ontvanger: "{description}" en de onderstaande lijst met 20 nieuwsitems, kies
+    de {num_items} items waarvan je verwacht dat ze het best passen bij de nieuwsbehoefte en geef ze een positie op basis van prioriteit.
+    Geef ook de reden voor elke keuze.
 
-@ell.simple(model="gpt-4o", temperature=0.1)
-def choose_the_best_draft(drafts : List[str]):
-    """You are an expert fiction editor."""
-    return f"Choose the best draft from the following list: {'\n'.join(drafts)}."
+    {titles_with_summaries}
+    """
 
-@ell.simple(model="gpt-4-turbo", temperature=0.2)
-def write_a_really_good_story(about : str):
-    """You are an expert novelist that writes in the style of Shakespeare. You write in lowercase."""
-    ideas = generate_story_ideas(about, api_params=(dict(n=4)))
-    drafts = [write_a_draft_of_a_story(idea) for idea in ideas]
-    best_draft = choose_the_best_draft(drafts)
-    return f"Make a final revision of this story in your voice: {best_draft}."
+def generate_newsletter(description: str):
+    # Eerste call: genereren van gepersonaliseerde nieuwsbronnen
+    personalized_news = generate_personalized_newsfeed(description).parsed
+    
+    all_ranked_news_items = []
 
-def main():
-    story = write_a_really_good_story("a dog")
-    print(story)
+    # Tweede call: ophalen van artikelen en rangschikken van items
+    for source in personalized_news.sources:
+        fetch_filtered_feed_data(source.name)  # JSON-bestand genereren met de artikelen van de feed
+        json_filename = f"{source.name}_filtered.json"
+        
+        with open(json_filename, "r", encoding="utf-8") as file:
+            articles = [RSSItem(**item) for item in json.load(file)]
+        
+        # Rangschik de artikelen op basis van de eerste call output
+        ranked_news_items = rank_news_items(description, articles, source.weight).parsed
+        all_ranked_news_items.extend(ranked_news_items.items)
+    
+    # Print de gerangschikte nieuwsitems
+    for item in all_ranked_news_items:
+        print(f"ID: {item.id}, Title: {item.title}, Position: {item.position}, Reason: {item.reason}")
 
-if __name__ == "__main__":
-    main()
+# Voorbeeld aanroep
+generate_newsletter("Ik ben een fervente volger van geopolitieke ontwikkelingen, serieuze analyses en diepgaande reportages. Daarnaast houd ik ook van af en toe wat luchtig nieuws.")

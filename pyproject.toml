@@ -15,6 +15,7 @@ dependencies = [
     "anthropic",
     "pydantic",
     "openai",
+    "feedparser",
 ]
 
 [project.scripts]
