@@ -4,6 +4,44 @@
             "type": "text/plain",
             "language": null,
             "base": "https://feeds.nos.nl/nosnieuwsbuitenland",
+            "value": "Ruimteschip onderweg naar gestrande Amerikaanse astronauten"
+        },
+        "links": [
+            {
+                "rel": "alternate",
+                "type": "text/html",
+                "href": "https://nos.nl/l/2538879"
+            },
+            {
+                "rel": "enclosure",
+                "type": "image/jpeg",
+                "href": "https://cdn.nos.nl/image/2024/09/29/1141182/1008x567.jpg"
+            }
+        ],
+        "summary_detail": {
+            "type": "text/html",
+            "language": null,
+            "base": "https://feeds.nos.nl/nosnieuwsbuitenland",
+            "value": "<p>Een ruimteschip met twee mensen aan boord is zaterdag vertrokken naar ruimtestation ISS, waar twee Amerikaanse astronauten vastzitten. Het viertal keert begin volgend jaar samen terug naar de aarde.</p>\n<p>De raket van SpaceX steeg om 19.17 uur Nederlandse tijd op vanaf ruimtebasis Cape Canaveral in Florida. De lancering stond eigenlijk gepland voor een een paar dagen geleden, maar werd uitgesteld vanwege orkaan Helene. Aan boord zijn de Amerikaanse astronaut Nick Hague (49) en de Russische kosmonaut Aleksandr Gorboenov (34). Het is de bedoeling dat zij zondag rond 23.30 uur Nederlandse tijd aankoppelen bij het ISS.</p>\n<p>Op het internationale ruimtestation zitten Barry Wilmore (61) en Sunita Williams (59) nu al een paar maanden vast. Ze gingen in juni met de Starliner van Boeing naar het ruimtestation voor een missie van acht dagen. Maar tijdens de koppeling van de ruimtecapsule met het ruimtestation ging er van alles mis. Er waren problemen met een aantal stuurraketten en er lekte helium. Om veiligheidsredenen besloot NASA om de twee astronauten niet met de Starliner terug te laten keren.</p>\n<p>Inmiddels is de Starliner weer terug op aarde. Er zal worden onderzocht wat er mis is gegaan.</p>\n<h2>Beste van maken</h2>\n<p>Wilmore en Williams hielden een paar weken geleden een persconferentie. Ze vertelden dat ze het moeilijk vonden toen de ruimtecapsule zonder hen terugging naar de aarde. Desondanks blijven ze positief. \"We zijn getraind om het onverwachte te verwachten\", zei Wilmore. Wel voegde collega Williams daaraan toe dat ze haar familie en twee honden mist.</p>\n<p>In de tussentijd maken ze er maar het beste van. Zo zeggen de astronauten voldoening te halen uit het werk. Ook hebben ze een aanvraag ingediend om te kunnen stemmen bij de Amerikaanse verkiezingen in november. Dat doen ze door middel van een volmacht.</p>\n<p>De twee astronauten op de persconferentie:</p>"
+        },
+        "published_parsed": [
+            2024,
+            9,
+            28,
+            23,
+            9,
+            57,
+            5,
+            272,
+            0
+        ],
+        "id": "https://nos.nl/l/2538879"
+    },
+    {
+        "title_detail": {
+            "type": "text/plain",
+            "language": null,
+            "base": "https://feeds.nos.nl/nosnieuwsbuitenland",
             "value": "Dodental orkaan Helene in VS opgelopen tot 56"
         },
         "links": [
@@ -720,43 +758,5 @@
             0
         ],
         "id": "https://nos.nl/l/2538746"
-    },
-    {
-        "title_detail": {
-            "type": "text/plain",
-            "language": null,
-            "base": "https://feeds.nos.nl/nosnieuwsbuitenland",
-            "value": "Zeker 30 doden en miljoenen mensen zonder stroom in VS door tropische storm Helene"
-        },
-        "links": [
-            {
-                "rel": "alternate",
-                "type": "text/html",
-                "href": "https://nos.nl/l/2538740"
-            },
-            {
-                "rel": "enclosure",
-                "type": "image/jpeg",
-                "href": "https://cdn.nos.nl/image/2024/09/27/1140701/1008x567.jpg"
-            }
-        ],
-        "summary_detail": {
-            "type": "text/html",
-            "language": null,
-            "base": "https://feeds.nos.nl/nosnieuwsbuitenland",
-            "value": "<p>De tropische storm Helene, die gisteravond als krachtige orkaan aan land kwam in de Amerikaanse staat Florida, heeft aan zeker 30 mensen het leven gekost. Meer dan vier miljoen mensen zitten zonder stroom, melden Amerikaanse media. Hoewel de kracht van Helene is afgenomen, waarschuwen autoriteiten dat de harde wind en de regenval nog steeds levensgevaarlijk kunnen zijn.</p>\n<p>In verschillende staten in het zuidoosten van de VS zijn vannacht grote overstromingen ontstaan. In de stad Atlanta in de staat Georgia moesten daardoor zeker twintig mensen worden gered, waaronder een baby en twee volwassenen die op het dak van een auto vast waren komen te zitten.</p>\n<p>Meerdere ziekenhuizen in het zuiden van Georgia kwamen zonder stroom te zitten. De gouverneur van de staat heeft duizend extra militairen opgeroepen om hulp te bieden.</p>\n<p>In Florida schoten reddingswerkers 200 mensen te hulp na overstromingen. Ze haalden tientallen mensen van een overstroomde snelweg. Veel wegen zijn nog onbegaanbaar en een aantal scholen blijft vandaag dicht.</p>\n<h2>Dam dreigt te bezwijken</h2>\n<p>Vandaag zal Helene naar verwachting meer grote overstromingen veroorzaken, waarschuwen weerdiensten. Autoriteiten zeggen dat bewoners zich moeten voorbereiden op plotselinge overstromingen en aardverschuivingen.</p>\n<p>In de staat North Carolina dreigt een dam te bezwijken, waarschuwen de autoriteiten. De dam ligt op 32 kilometer van Asheville, een stad met bijna 100.000 inwoners. Voor delen van de stad zijn evacuatiebevelen uitgevaardigd.</p>\n<p>Door de tropische storm zijn meer dan 800 vluchten geannuleerd. Naar verwachting zal de kracht van Helene vandaag verder afnemen.</p>\n<p>De Amerikaanse president Biden benadrukt dat alle inwoners van de geraakte gebieden \"er alles aan moeten doen om henzelf en hun familie veilig te houden\". \"Mijn regering staat klaar om indien nodig meer steun te bieden\", schreef hij op sociale media.</p>\n<p>De politie van Tampa, Florida deelde een video van een reddingsactie:</p>\n<p>De orkaan bereikte de noordwestkust van Florida gisteren rond 23.00 uur lokale tijd. Dat gebeurde met windsnelheden van naar schatting 225 kilometer per uur. Inmiddels trekt Helene als tropische storm verder over de staten Georgia, Virginia, Tennessee en North en South Carolina. Meerdere gouverneurs hebben in hun staat de noodtoestand uitgeroepen.</p>\n<p>Bij het aanbreken van de ochtend werd in Florida, in de delen waar het ergste achter de rug is, de verwoesting zichtbaar. Verzekeringsmaatschappijen spreken van miljarden dollars aan schade.</p>"
-        },
-        "published_parsed": [
-            2024,
-            9,
-            27,
-            16,
-            30,
-            3,
-            4,
-            271,
-            0
-        ],
-        "id": "https://nos.nl/l/2538740"
     }
 ]

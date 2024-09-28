@@ -18,6 +18,7 @@ class SelectedNewsItems(BaseModel):
 
 class FinalNewsItem(BaseModel):
     id: str = Field(description="id van het nieuwsitem")
+    title: str = Field(description="titel van het nieuwsitem")
     position: int = Field(description="positie van het nieuwsitem(1 tm 5)")
     approach: str = Field(description="korte instructie hoe het item te benaderen (opgewekt, serieus, deepdive bijv.)")
 

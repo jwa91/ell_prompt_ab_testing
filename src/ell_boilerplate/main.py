@@ -18,15 +18,15 @@ ell.init(store='./logdir', autocommit=True, verbose=True)
 @ell.complex(model="gpt-4o-2024-08-06", response_format=PersonalizedNewsfeed)
 def generate_personalized_newsfeed(description: str) -> PersonalizedNewsfeed:
     """
-    Je bent een persoonlijke nieuwsbrief redacteur. Op basis van een persoonlijke omschrijving geef je tussen de 3 en 5
+    Je bent een persoonlijke nieuwsbrief redacteur. Op basis van een persoonlijke omschrijving geef je tussen de 2 en 3
     nieuwsbronnen terug, elk met een weging op een schaal van 1 tot 10 die samen altijd optellen tot exact 10. Geef ook kort de reden voor het opnemen van elke bron.
     Kies altijd uit de meegegeven nieuwsbronnen.
     """
     available_feeds = ", ".join([f"{feed['name']} (Doelgroep: {feed['audience']})" for feed in feeds_with_target_audience])
     return f"""
-    Gebaseerd op de volgende omschrijving van de ontvanger: "{description}", kies je minimaal 4 en maximaal 8 nieuwsbronnen
+    Gebaseerd op de volgende omschrijving van de ontvanger: "{description}", kies je minimaal 2 en maximaal 3 nieuwsbronnen
     die het beste passen bij hun nieuwsbehoefte. Geef aan waarom je deze bronnen kiest en wijs elke bron een weging toe
-    in procenten. De totale weging moet precies 10 zijn. Beschikbare nieuwsbronnen en hun doelgroepen: {available_feeds}
+    in procenten. De totale weging moet precies 10 zijn. Beschikbare nieuwsbronnen: {available_feeds}
     """
 
 @ell.complex(model="gpt-4o-2024-08-06", response_format=SelectedNewsItems)
@@ -43,6 +43,8 @@ def select_news_items(description: str, articles: List[RSSItem], source: NewsSou
     Geef een argument waarom het belangrijk is om dit nieuwsbericht op te nemen in de nieuwsbrief
 
     {titles_with_summaries}
+
+    Geef je antwoord in de vorm van een lijst van SelectedNewsItem objecten, elk met een ID, Titel en reden.
     """
 
 @ell.complex(model="gpt-4o-2024-08-06", response_format=FinalNewsItems)
@@ -59,16 +61,57 @@ def create_final_newsletter(description: str, selected_items: List[SelectedNewsI
 
     Maar zorg er bij je selectie ook voor dat je er een goede coherente nieuwsbrief van kunt maken. Kijk of er
     overkoepelende verhaallijnen zijn of thema's die je aan kunt stippen. Maak een logische indeling en maak vervolgens
-    voor elk nieuwsitem dat in je uiteindelijke selectie zit een korte instructie hoe dit nieuwsitem benaderd moet worden.
+    voor elk nieuwsitem dat in je uiteindelijke selectie zit een korte instructie hoe dit nieuwsitem benaderd moet worden. hou er rekening mee dat deze benadering geschikt is voor een stukje tekst dat dient als 1 van de 5 stukjes tekst voor een nieuwsbrief. Dus niet te lang, geen diepgaande analyses.
 
     Hier zijn de beschikbare nieuwsitems:
 
     {items_str}
 
-    Geef je antwoord in de vorm van een lijst van 5 FinalNewsItem objecten, elk met een ID, positie (1-5), en benadering.
+    Geef je antwoord in de vorm van een lijst van 5 FinalNewsItem objecten, elk met een ID, Titel, positie (1-5), en benadering.
     """
 
-def generate_newsletter(description: str) -> FinalNewsItems:
+@ell.simple(model="gpt-4o-mini", temperature=1.0)
+def generate_news_item_versions(news_item: FinalNewsItem):
+    """
+    Je bent een getalenteerde nieuws schrijver. Schrijf een item voor een nieuwsbrief. 
+    """
+    return f"""
+    Schrijf een nieuwsitem met de volgende details:
+    Titel: {news_item.title}
+    Benadering: {news_item.approach}
+    """
+
+@ell.simple(model="gpt-4o", temperature=0.1)
+def choose_and_improve_best_version(versions: List[str], news_item: FinalNewsItem):
+    """
+    Je bent een ervaren redacteur. Kies de beste versie van het nieuwsartikel en verbeter het waar nodig.
+    """
+    versions_str = "\n\n".join([f"Versie {i+1}:\n{version}" for i, version in enumerate(versions)])
+    return f"""
+    Kies de beste versie van het volgende nieuwsartikel en verbeter het waar nodig:
+    {versions_str}
+    """
+
+@ell.simple(model="gpt-4-turbo", temperature=0.2)
+def compile_final_newsletter(final_versions: List[str], description: str):
+    """
+    Je bent hoofdredacteur van een nieuwsbrief. Maak op basis van de volgende nieuwsartikelen een coherente nieuwsbrief.
+    Voeg waar nodig overgangen of verbindende teksten toe.
+    """
+    articles_str = "\n\n".join(final_versions)
+    return f"""
+    Je bent hoofdredacteur van een nieuwsbrief. Maak op basis van de volgende nieuwsartikelen een coherente nieuwsbrief.
+    Voeg waar nodig overgangen of verbindende teksten toe.
+    Beschrijving van de lezer: "{description}"
+
+    Nieuwsartikelen:
+    {articles_str}
+
+    Geef het eindresultaat in markdown formaat.
+    """
+
+def generate_newsletter(description: str) -> str:
+    # Stap 1: Genereer een gepersonaliseerde nieuwsfeed
     personalized_news_message = generate_personalized_newsfeed(description)
     personalized_news = personalized_news_message.parsed
 
@@ -85,11 +128,34 @@ def generate_newsletter(description: str) -> FinalNewsItems:
         all_selected_news_items.extend(selected_news_items.items)
 
     final_newsletter_message = create_final_newsletter(description, all_selected_news_items)
-    return final_newsletter_message.parsed
+    final_news_items = final_newsletter_message.parsed.items
+
+    # Nu, voor elk van de finale nieuwsitems, genereer 2 versies en kies de beste
+    final_versions = []
+    for news_item in final_news_items:
+        # Genereer 2 versies
+        versions_messages = generate_news_item_versions(news_item, api_params={'n': 2})
+        versions = [str(message) for message in versions_messages]
+        print(f"Generated versions for news item {news_item.id}:")
+        for i, version in enumerate(versions):
+            print(f"Version {i+1}:\n{version}\n")
+
+        # Kies en verbeter de beste versie
+        best_version_message = choose_and_improve_best_version(versions, news_item)
+        best_version = str(best_version_message)
+
+        final_versions.append(best_version)
+
+    # Compileer de uiteindelijke nieuwsbrief
+    final_newsletter_message = compile_final_newsletter(final_versions, description)
+    final_newsletter = str(final_newsletter_message)
+
+    # Sla de uiteindelijke nieuwsbrief op als markdown
+    with open('final_newsletter.md', 'w', encoding='utf-8') as f:
+        f.write(final_newsletter)
+
+    return final_newsletter
+
 
 # Voorbeeld aanroep
 result = generate_newsletter("Ik ben een fervente volger van geopolitieke ontwikkelingen, serieuze analyses en diepgaande reportages. Daarnaast houd ik ook van af en toe wat luchtig nieuws.")
-
-# Print de geselecteerde nieuwsitems
-for item in result.items:
-    print(f"ID: {item.id}, Positie: {item.position}, Benadering: {item.approach}")
