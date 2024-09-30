@@ -1,161 +1,118 @@
 import ell
-import json
-from typing import List
-from ell_boilerplate.utils.feeds import feeds_with_target_audience
-from ell_boilerplate.utils.get_rss_feeds import fetch_filtered_feed_data
-from ell_boilerplate.models.functionstructures import RSSItem
-from ell_boilerplate.models.llm_response_structure import (
-    NewsSource, 
-    PersonalizedNewsfeed, 
-    SelectedNewsItem, 
-    SelectedNewsItems,
-    FinalNewsItem,
-    FinalNewsItems
-)
+import feedparser
+from typing import List, Tuple
+import sqlite3
+from datetime import datetime
+import uuid
+import voyageai
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 
-ell.init(store='./logdir', autocommit=True, verbose=True)
+# Register adapters and converters for SQLite
+sqlite3.register_adapter(datetime, lambda val: val.isoformat())
+sqlite3.register_converter("timestamp", lambda val: datetime.fromisoformat(val.decode("utf-8")))
 
-@ell.complex(model="gpt-4o-2024-08-06", response_format=PersonalizedNewsfeed)
-def generate_personalized_newsfeed(description: str) -> PersonalizedNewsfeed:
-    """
-    Je bent een persoonlijke nieuwsbrief redacteur. Op basis van een persoonlijke omschrijving geef je tussen de 2 en 3
-    nieuwsbronnen terug, elk met een weging op een schaal van 1 tot 10 die samen altijd optellen tot exact 10. Geef ook kort de reden voor het opnemen van elke bron.
-    Kies altijd uit de meegegeven nieuwsbronnen.
-    """
-    available_feeds = ", ".join([f"{feed['name']} (Doelgroep: {feed['audience']})" for feed in feeds_with_target_audience])
-    return f"""
-    Gebaseerd op de volgende omschrijving van de ontvanger: "{description}", kies je minimaal 2 en maximaal 3 nieuwsbronnen
-    die het beste passen bij hun nieuwsbehoefte. Geef aan waarom je deze bronnen kiest en wijs elke bron een weging toe
-    in procenten. De totale weging moet precies 10 zijn. Beschikbare nieuwsbronnen: {available_feeds}
-    """
+ell.init(store='./logdir', autocommit=True)
 
-@ell.complex(model="gpt-4o-2024-08-06", response_format=SelectedNewsItems)
-def select_news_items(description: str, articles: List[RSSItem], source: NewsSource) -> SelectedNewsItems:
-    """
-    Je bent een redacteur die artikelen selecteert voor een nieuwsbrief. Op basis van de beschrijving van de ontvanger
-    en de aangeleverde artikelen, selecteer je de beste artikelen die aansluiten bij de nieuwsbehoefte.
-    """
-    num_items = round(source.weight * 1.5)
-    titles_with_summaries = "\n".join([f"ID: {article.id}, Title: {article.title_detail.value}, Summary: {article.summary_detail.value[:100]}" for article in articles])
-    return f"""
-    beschrijving van de ontvanger: "{description}"
-    kies de {num_items} items die het best passen bij de nieuwsbehoefte
-    Geef een argument waarom het belangrijk is om dit nieuwsbericht op te nemen in de nieuwsbrief
+RSS_FEED_URL = "https://feeds.nos.nl/nosvoetbal"
 
-    {titles_with_summaries}
+# Initialize Voyage AI client
+vo = voyageai.Client()  # Assumes VOYAGE_API_KEY is set in environment variables
 
-    Geef je antwoord in de vorm van een lijst van SelectedNewsItem objecten, elk met een ID, Titel en reden.
-    """
+def fetch_news(n: int) -> List[Tuple[str, str]]:
+    """Fetch n news articles from the RSS feed."""
+    feed = feedparser.parse(RSS_FEED_URL)
+    return [(entry.title, entry.summary) for entry in feed.entries[:n]]
 
-@ell.complex(model="gpt-4o-2024-08-06", response_format=FinalNewsItems)
-def create_final_newsletter(description: str, selected_items: List[SelectedNewsItem]) -> FinalNewsItems:
-    """
-    Je bent hoofdredacteur van een persoonlijke nieuwsbrief. Je redacteuren hebben een lijst opgesteld met alle mogelijke
-    onderwerpen die vandaag behandeld kunnen worden. Maak de uiteindelijke selectie van 5 nieuwsitems.
-    """
-    items_str = "\n".join([f"ID: {item.id}, Title: {item.title}, Reason: {item.reason}" for item in selected_items])
-    return f"""
-    Je bent hoofdredacteur van een persoonlijke nieuwsbrief. Je redacteuren hebben een lijst opgesteld met alle mogelijke
-    onderwerpen die vandaag behandeld kunnen worden. Maak de uiteindelijke selectie van 5 nieuwsitems. Hou rekening met
-    de nieuwsbehoefte van de lezer: "{description}"
+@ell.simple(model="gpt-4-turbo", temperature=0.1)
+def summarize_news_v1(title: str, content: str) -> str:
+    """Summarize the given news article with a focus on factual reporting."""
+    return f"""You are an expert news editor known for your ability to distill complex news stories into clear, concise summaries. Your task is to summarize the following news article in 2-3 sentences, focusing on the most crucial facts and key points. Maintain a neutral, objective tone and ensure all information is accurate.
 
-    Maar zorg er bij je selectie ook voor dat je er een goede coherente nieuwsbrief van kunt maken. Kijk of er
-    overkoepelende verhaallijnen zijn of thema's die je aan kunt stippen. Maak een logische indeling en maak vervolgens
-    voor elk nieuwsitem dat in je uiteindelijke selectie zit een korte instructie hoe dit nieuwsitem benaderd moet worden. hou er rekening mee dat deze benadering geschikt is voor een stukje tekst dat dient als 1 van de 5 stukjes tekst voor een nieuwsbrief. Dus niet te lang, geen diepgaande analyses.
+Title: {title}
+Content: {content}
 
-    Hier zijn de beschikbare nieuwsitems:
+Summary (2-3 sentences):"""
 
-    {items_str}
+@ell.simple(model="gpt-4o-mini", temperature=0.9)
+def summarize_news_v2(title: str, content: str) -> str:
+    """Summarize the given news article make it entertaining."""
+    return f"""You are a gossip news editor known for your ability to entertain. Your task is to summarize the following news article in 2-3 sentences, focusing on the most fun points. Maintain a sensational and engaging tone
 
-    Geef je antwoord in de vorm van een lijst van 5 FinalNewsItem objecten, elk met een ID, Titel, positie (1-5), en benadering.
-    """
+Title: {title}
+Content: {content}
 
-@ell.simple(model="gpt-4o-mini", temperature=1.0)
-def generate_news_item_versions(news_item: FinalNewsItem):
-    """
-    Je bent een getalenteerde nieuws schrijver. Schrijf een item voor een nieuwsbrief. 
-    """
-    return f"""
-    Schrijf een nieuwsitem met de volgende details:
-    Titel: {news_item.title}
-    Benadering: {news_item.approach}
-    """
+Summary (2-3 sentences):"""
 
-@ell.simple(model="gpt-4o", temperature=0.1)
-def choose_and_improve_best_version(versions: List[str], news_item: FinalNewsItem):
-    """
-    Je bent een ervaren redacteur. Kies de beste versie van het nieuwsartikel en verbeter het waar nodig.
-    """
-    versions_str = "\n\n".join([f"Versie {i+1}:\n{version}" for i, version in enumerate(versions)])
-    return f"""
-    Kies de beste versie van het volgende nieuwsartikel en verbeter het waar nodig:
-    {versions_str}
-    """
+def evaluate_summary(original: str, summary: str) -> float:
+    """Evaluate the summary using vector embeddings and cosine similarity."""
+    # Get embeddings for original article and summary
+    original_embedding = vo.embed([original], model="voyage-3", input_type="document").embeddings[0]
+    summary_embedding = vo.embed([summary], model="voyage-3", input_type="document").embeddings[0]
+    
+    # Calculate cosine similarity
+    similarity = cosine_similarity([original_embedding], [summary_embedding])[0][0]
+    
+    return similarity
 
-@ell.simple(model="gpt-4-turbo", temperature=0.2)
-def compile_final_newsletter(final_versions: List[str], description: str):
-    """
-    Je bent hoofdredacteur van een nieuwsbrief. Maak op basis van de volgende nieuwsartikelen een coherente nieuwsbrief.
-    Voeg waar nodig overgangen of verbindende teksten toe.
-    """
-    articles_str = "\n\n".join(final_versions)
-    return f"""
-    Je bent hoofdredacteur van een nieuwsbrief. Maak op basis van de volgende nieuwsartikelen een coherente nieuwsbrief.
-    Voeg waar nodig overgangen of verbindende teksten toe.
-    Beschrijving van de lezer: "{description}"
+def save_evaluation(invocation_id: str, metric_name: str, metric_value: float):
+    """Save the evaluation result to the database."""
+    store = ell.get_store()
+    conn_string = store.engine.url.database
+    conn = sqlite3.connect(conn_string, detect_types=sqlite3.PARSE_DECLTYPES)
+    cursor = conn.cursor()
 
-    Nieuwsartikelen:
-    {articles_str}
+    cursor.execute('''
+    INSERT INTO evaluation (id, invocation_id, metric_name, metric_value, created_at)
+    VALUES (?, ?, ?, ?, ?)
+    ''', (str(uuid.uuid4()), invocation_id, metric_name, metric_value, datetime.now()))
 
-    Geef het eindresultaat in markdown formaat.
-    """
+    conn.commit()
+    conn.close()
 
-def generate_newsletter(description: str) -> str:
-    # Stap 1: Genereer een gepersonaliseerde nieuwsfeed
-    personalized_news_message = generate_personalized_newsfeed(description)
-    personalized_news = personalized_news_message.parsed
+def get_invocation_id(summary):
+    """Extract the invocation_id from the __origin_trace__ frozenset."""
+    for item in summary.__origin_trace__:
+        if item.startswith('invocation-'):
+            return item
+    return None 
 
-    all_selected_news_items = []
-    for source in personalized_news.sources:
-        fetch_filtered_feed_data(source.name)
-        json_filename = f"{source.name}_filtered.json"
+def main():
+    news_articles = fetch_news(2)
+    
+    for i, (title, content) in enumerate(news_articles, 1):
+        print(f"\nProcessing Article {i}:")
+        
+        original_text = f"{title}\n{content}"
+        
+        # Summarize with v1
+        summary1 = summarize_news_v1(title, content)
+        invocation_id1 = get_invocation_id(summary1)
+        if invocation_id1:
+            evaluation1 = evaluate_summary(original_text, summary1)
+            save_evaluation(invocation_id1, "cosine_similarity", evaluation1)
+        else:
+            print(f"Warning: Could not find invocation_id for summary1 of article {i}")
+            evaluation1 = None
 
-        with open(json_filename, "r", encoding="utf-8") as file:
-            articles = [RSSItem(**item) for item in json.load(file)]
+        # Summarize with v2
+        summary2 = summarize_news_v2(title, content)
+        invocation_id2 = get_invocation_id(summary2)
+        if invocation_id2:
+            evaluation2 = evaluate_summary(original_text, summary2)
+            save_evaluation(invocation_id2, "cosine_similarity", evaluation2)
+        else:
+            print(f"Warning: Could not find invocation_id for summary2 of article {i}")
+            evaluation2 = None
 
-        selected_news_items_message = select_news_items(description, articles, source)
-        selected_news_items = selected_news_items_message.parsed
-        all_selected_news_items.extend(selected_news_items.items)
+        print(f"Artikel {i}:")
+        print(f"Titel: {title}")
+        print(f"Samenvatting 1: {summary1}")
+        print(f"Evaluatie 1 (Cosine Similarity): {evaluation1}")
+        print(f"Invocation ID 1: {invocation_id1}")
+        print(f"Samenvatting 2: {summary2}")
+        print(f"Evaluatie 2 (Cosine Similarity): {evaluation2}")
+        print(f"Invocation ID 2: {invocation_id2}\n")
 
-    final_newsletter_message = create_final_newsletter(description, all_selected_news_items)
-    final_news_items = final_newsletter_message.parsed.items
-
-    # Nu, voor elk van de finale nieuwsitems, genereer 2 versies en kies de beste
-    final_versions = []
-    for news_item in final_news_items:
-        # Genereer 2 versies
-        versions_messages = generate_news_item_versions(news_item, api_params={'n': 2})
-        versions = [str(message) for message in versions_messages]
-        print(f"Generated versions for news item {news_item.id}:")
-        for i, version in enumerate(versions):
-            print(f"Version {i+1}:\n{version}\n")
-
-        # Kies en verbeter de beste versie
-        best_version_message = choose_and_improve_best_version(versions, news_item)
-        best_version = str(best_version_message)
-
-        final_versions.append(best_version)
-
-    # Compileer de uiteindelijke nieuwsbrief
-    final_newsletter_message = compile_final_newsletter(final_versions, description)
-    final_newsletter = str(final_newsletter_message)
-
-    # Sla de uiteindelijke nieuwsbrief op als markdown
-    with open('final_newsletter.md', 'w', encoding='utf-8') as f:
-        f.write(final_newsletter)
-
-    return final_newsletter
-
-
-# Voorbeeld aanroep
-result = generate_newsletter("Ik ben een fervente volger van geopolitieke ontwikkelingen, serieuze analyses en diepgaande reportages. Daarnaast houd ik ook van af en toe wat luchtig nieuws.")
+if __name__ == "__main__":
+    main()
