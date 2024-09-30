@@ -61,6 +61,11 @@ After installation, follow these steps to set up and run the project:
 
 You can run `ell_dbstructure` at any time to check the current state of the database structure.
 
+5. Run the evaluation utility to create a markdown summary of the score of each of the tested prompts.
+   ```
+   ell_eval
+   ```
+
 ## Configuration
 
 - Create a `.env` file based on the `.env.example` and add your API keys and other configuration options. Note that ell relies on these environment variables so make sure they are set before using ell functionality, including ell studio and autocommit.
@@ -94,13 +99,6 @@ This project relies on several Python libraries, including:
 - voyageai
 - scikit-learn
 - numpy
+- matplotlib
 
 These dependencies are automatically installed when you install the package.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the [LICENSE](LICENSE) file in the repository.
