@@ -7,6 +7,11 @@ import uuid
 import voyageai
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
+from pydantic import BaseModel, Field
+
+class SummaryEvaluation(BaseModel):
+    completeness: float = Field(description="Evaluation of summary completeness, from 0 to 1")
+    objectivity: float = Field(description="Evaluation of summary objectivity, from 0 to 1")
 
 # Register adapters and converters for SQLite
 sqlite3.register_adapter(datetime, lambda val: val.isoformat())
@@ -17,7 +22,7 @@ ell.init(store='./logdir', autocommit=True)
 RSS_FEED_URL = "https://feeds.nos.nl/nosvoetbal"
 
 # Initialize Voyage AI client
-vo = voyageai.Client()  # Assumes VOYAGE_API_KEY is set in environment variables
+vo = voyageai.Client() 
 
 def fetch_news(n: int) -> List[Tuple[str, str]]:
     """Fetch n news articles from the RSS feed."""
@@ -77,6 +82,25 @@ def get_invocation_id(summary):
             return item
     return None 
 
+@ell.complex(model="gpt-4o-2024-08-06", response_format=SummaryEvaluation)
+def evaluate_summary_llm(original: str, summary: str) -> SummaryEvaluation:
+    """Evaluate the given summary based on completeness and objectivity."""
+    return f"""You are an expert in evaluating news summaries. Your task is to assess the following summary based on two criteria: completeness and objectivity.
+
+Completeness measures how well the summary captures all the key points of the original text. A score of 1 means the summary includes all important information, while 0 means it misses crucial points.
+
+Objectivity measures how neutral and unbiased the summary is compared to the original text. A score of 1 means the summary maintains the same level of objectivity as the original, while 0 means it introduces significant bias or opinion.
+
+Please evaluate the summary and provide scores for both criteria as floats between 0 and 1.
+
+Original text:
+{original}
+
+Summary:
+{summary}
+
+Evaluation:"""
+
 def main():
     news_articles = fetch_news(2)
     
@@ -91,9 +115,18 @@ def main():
         if invocation_id1:
             evaluation1 = evaluate_summary(original_text, summary1)
             save_evaluation(invocation_id1, "cosine_similarity", evaluation1)
+            
+            llm_eval1 = evaluate_summary_llm(original_text, summary1)
+            
+            # Extract the parsed evaluation
+            parsed_eval1 = llm_eval1.content[0].parsed
+            
+            save_evaluation(invocation_id1, "completeness", parsed_eval1.completeness)
+            save_evaluation(invocation_id1, "objectivity", parsed_eval1.objectivity)
         else:
             print(f"Warning: Could not find invocation_id for summary1 of article {i}")
             evaluation1 = None
+            parsed_eval1 = None
 
         # Summarize with v2
         summary2 = summarize_news_v2(title, content)
@@ -101,18 +134,32 @@ def main():
         if invocation_id2:
             evaluation2 = evaluate_summary(original_text, summary2)
             save_evaluation(invocation_id2, "cosine_similarity", evaluation2)
+
+            llm_eval2 = evaluate_summary_llm(original_text, summary2)
+            
+            # Extract the parsed evaluation
+            parsed_eval2 = llm_eval2.content[0].parsed
+            
+            save_evaluation(invocation_id2, "completeness", parsed_eval2.completeness)
+            save_evaluation(invocation_id2, "objectivity", parsed_eval2.objectivity)
         else:
             print(f"Warning: Could not find invocation_id for summary2 of article {i}")
             evaluation2 = None
+            parsed_eval2 = None
 
         print(f"Artikel {i}:")
         print(f"Titel: {title}")
         print(f"Samenvatting 1: {summary1}")
         print(f"Evaluatie 1 (Cosine Similarity): {evaluation1}")
+        print(f"Evaluatie 1 (Completeness): {parsed_eval1.completeness if parsed_eval1 else 'N/A'}")
+        print(f"Evaluatie 1 (Objectivity): {parsed_eval1.objectivity if parsed_eval1 else 'N/A'}")
         print(f"Invocation ID 1: {invocation_id1}")
         print(f"Samenvatting 2: {summary2}")
         print(f"Evaluatie 2 (Cosine Similarity): {evaluation2}")
+        print(f"Evaluatie 2 (Completeness): {parsed_eval2.completeness if parsed_eval2 else 'N/A'}")
+        print(f"Evaluatie 2 (Objectivity): {parsed_eval2.objectivity if parsed_eval2 else 'N/A'}")
         print(f"Invocation ID 2: {invocation_id2}\n")
+
 
 if __name__ == "__main__":
     main()
