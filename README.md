@@ -2,6 +2,7 @@
 
 This project is a proof of concept for A/B testing prompts with the help of the amazing Ell package. The sample it contains uses 2 different prompts and models for summarizing a news article. It then uses coseine similarity and additional llm calls to evaluate the quality of the summary. 
 It finally stores these evaluations in the same database as the invocations, in order to incrementally create the best possible prompt. 
+For an in depth explanation see my [blog post](https://janwillemaltink.eu/blog/blogartikelen/agentframeworks-deel-2-hoe-je-het-ell-framework-kunt-gebruiken-voor-het-ab-testen-van-prompts)
 
 ## Features
 
