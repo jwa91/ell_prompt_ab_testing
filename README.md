@@ -63,7 +63,7 @@ You can run `ell_dbstructure` at any time to check the current state of the data
 
 ## Configuration
 
-- Create a `.env` file based on the `.env.example` and add your API keys and other configuration options.
+- Create a `.env` file based on the `.env.example` and add your API keys and other configuration options. Note that ell relies on these environment variables so make sure they are set before using ell functionality, including ell studio and autocommit.
 
 ## Project Structure
 
