@@ -1,14 +1,17 @@
-# ELL Boilerplate
+# ELL A/B test script
 
-ELL Boilerplate is a Python package that demonstrates a method for prompt A/B testing using the Ell framework. This project provides an approach to compare different prompting strategies and evaluate their effectiveness using cosine similarity metrics.
+This project is a proof of concept for A/B testing prompts with the help of the amazing Ell package. The sample it contains uses 2 different prompts and models for summarizing a news article. It then uses coseine similarity and additional llm calls to evaluate the quality of the summary. 
+It finally stores these evaluations in the same database as the invocations, in order to incrementally create the best possible prompt. 
 
 ## Features
 
 - Fetch news articles from an RSS feed
 - Summarize news articles using two different prompting strategies
 - Evaluate summaries using vector embeddings and cosine similarity
+- Evaluate summaries using other LLM calls
 - Store evaluation results in a SQLite database
 - Utilities for database initialization and structure analysis
+- Create report on stored evaluations
 
 ## Installation
 
