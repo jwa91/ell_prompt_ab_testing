@@ -41,7 +41,7 @@ Summary (2-3 sentences):"""
 
 @ell.simple(model="gpt-4o-mini", temperature=0.9)
 def summarize_news_v2(title: str, content: str) -> str:
-    """Summarize the given news article make it entertaining."""
+    """Summarize the given news article make it funny."""
     return f"""You are a gossip news editor known for your ability to entertain. Your task is to summarize the following news article in 2-3 sentences, focusing on the most fun points. Maintain a sensational and engaging tone
 
 Title: {title}
@@ -102,7 +102,7 @@ Summary:
 Evaluation:"""
 
 def main():
-    news_articles = fetch_news(2)
+    news_articles = fetch_news(4)
     
     for i, (title, content) in enumerate(news_articles, 1):
         print(f"\nProcessing Article {i}:")

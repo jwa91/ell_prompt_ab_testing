@@ -19,12 +19,14 @@ dependencies = [
     "voyageai",
     "scikit-learn",
     "numpy",
+    "matplotlib",
 ]
 
 [project.scripts]
 ell_boilerplate = "ell_boilerplate.main:main"
 ell_initialize_db = "ell_boilerplate.utils.evaluations_table:main"
 ell_dbstructure = "ell_boilerplate.utils.datastructure:main"
+ell_eval = "ell_boilerplate.utils.evaluation:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
